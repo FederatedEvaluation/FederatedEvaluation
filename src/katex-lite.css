@@ -1,0 +1,12 @@
+katex-lite, .katex-lite {
+  font-family: "Times New Roman", "CMU Serif", serif;
+  font-size: 1em;
+  line-height: 1.2;
+}
+.katex-lite sup {
+  font-size: 0.7em;
+}
+.katex-lite.block {
+  display: block;
+  margin: 0.25rem 0;
+}

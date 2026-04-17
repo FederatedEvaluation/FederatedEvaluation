@@ -1,6 +1,6 @@
 # FedEvaluation
 
-FedEva is a reference implementation for federated evaluation workflows. It combines a React interface with lightweight Python services for group fairness (`Fed-e³`), performance fairness (`Fed4Fed`), and collaborative fairness (`D³EM`), and includes sample inputs for direct reproduction.
+FedEvaluation is a reference implementation for federated evaluation workflows. It combines a React interface with lightweight Python services for group fairness (`Fed-e³`), performance fairness (`Fed4Fed`), and collaborative fairness (`D³EM`), and includes sample inputs for direct reproduction.
 
 ## Repository Contents
 

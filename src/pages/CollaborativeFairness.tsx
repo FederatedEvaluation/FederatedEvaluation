@@ -117,6 +117,63 @@ const parseNumbers = (text: string): number[] => {
   return matches.map(Number).filter((v) => Number.isFinite(v));
 };
 
+const buildSafeData = <T,>(builder: () => T, fallback: T, label: string, isZh: boolean) => {
+  try {
+    return { data: builder(), error: null as string | null };
+  } catch (err) {
+    return {
+      data: fallback,
+      error: isZh ? `${label} 渲染失败，请检查输入数据。` : `${label} failed to render. Please check the input data.`,
+    };
+  }
+};
+
+const translateD3emWarning = (warning: string, isZh: boolean) => {
+  if (!isZh) return warning;
+
+  let match = warning.match(/^(.*) needs at least one series \(vind\/scos\/contrib\)\.$/);
+  if (match) return `${match[1]} 至少需要一条序列（vind/scos/contrib）。`;
+
+  match = warning.match(/^(.*): series length mismatch; trimmed to (\d+)\.$/);
+  if (match) return `${match[1]}：序列长度不一致，已截断为 ${match[2]}。`;
+
+  match = warning.match(/^(.*): V_ind\/S_cos missing; synthesized via synthetic_decompose\.$/);
+  if (match) return `${match[1]}：缺少 V_ind/S_cos，已通过 synthetic_decompose 合成。`;
+
+  match = warning.match(/^(.*): V_ind\/S_cos missing; using contrib as proxy \((.*)\)\.$/);
+  if (match) return `${match[1]}：缺少 V_ind/S_cos，已使用 contribution 序列作为代理（${match[2]}）。`;
+
+  match = warning.match(/^(.*): V_ind missing; derived from contrib \+ S_cos\.$/);
+  if (match) return `${match[1]}：缺少 V_ind，已由 contribution 与 S_cos 反推。`;
+
+  match = warning.match(/^(.*): V_ind missing; synthesized via synthetic_decompose\.$/);
+  if (match) return `${match[1]}：缺少 V_ind，已通过 synthetic_decompose 合成。`;
+
+  match = warning.match(/^(.*): V_ind missing; using contrib\/S_cos as proxy\.$/);
+  if (match) return `${match[1]}：缺少 V_ind，已使用 contribution/S_cos 作为代理。`;
+
+  match = warning.match(/^(.*): S_cos missing; derived from contrib \+ V_ind\.$/);
+  if (match) return `${match[1]}：缺少 S_cos，已由 contribution 与 V_ind 反推。`;
+
+  match = warning.match(/^(.*): S_cos missing; synthesized via synthetic_decompose\.$/);
+  if (match) return `${match[1]}：缺少 S_cos，已通过 synthetic_decompose 合成。`;
+
+  match = warning.match(/^(.*): S_cos missing; using contrib\/V_ind as proxy\.$/);
+  if (match) return `${match[1]}：缺少 S_cos，已使用 contribution/V_ind 作为代理。`;
+
+  match = warning.match(/^T=(\d+) exceeds available series length; trimmed to (\d+)\.$/);
+  if (match) return `T=${match[1]} 超过可用序列长度，已截断为 ${match[2]}。`;
+
+  match = warning.match(/^Normalization skipped at t=(\d+) due to near-zero sum\.$/);
+  if (match) return `在 t=${match[1]} 时，由于总和接近 0，已跳过归一化。`;
+
+  if (warning === 'Need at least two valid X/Y pairs to compute Pearson r.') {
+    return '至少需要两组有效的 X/Y 才能计算 Pearson r。';
+  }
+
+  return warning;
+};
+
 const buildMechanismSteps = (isZh: boolean) => [
   {
     label: isZh ? '上传摘要' : 'Upload summary',
@@ -377,25 +434,15 @@ const CollaborativeFairness: React.FC = () => {
   const activeClientId = selectedClientId && clientIds.includes(selectedClientId) ? selectedClientId : clientIds[0] || '';
   const selectedClient = activeClientId ? result?.perClient[activeClientId] : undefined;
 
-  const buildSafeData = <T,>(builder: () => T, fallback: T, label: string) => {
-    try {
-      return { data: builder(), error: null as string | null };
-    } catch (err) {
-      return {
-        data: fallback,
-        error: isZh ? `${label} 渲染失败，请检查输入数据。` : `${label} failed to render. Please check the input data.`,
-      };
-    }
-  };
-
   const alphaDataResult = useMemo(
     () =>
       buildSafeData(
         () => (result ? result.alpha.map((value, index) => ({ t: index, alpha: value })) : []),
         [],
-        'alpha(t)'
+        'alpha(t)',
+        isZh
       ),
-    [result]
+    [isZh, result]
   );
 
   const seriesDataResult = useMemo(
@@ -412,7 +459,8 @@ const CollaborativeFairness: React.FC = () => {
               }))
             : [],
         [],
-        isZh ? '融合曲线' : 'Fusion series'
+        isZh ? '融合曲线' : 'Fusion series',
+        isZh
       ),
     [isZh, selectedClient]
   );
@@ -431,7 +479,7 @@ const CollaborativeFairness: React.FC = () => {
           rows.push(row);
         }
         return rows;
-      }, [], isZh ? '权重演化' : 'Weight evolution'),
+      }, [], isZh ? '权重演化' : 'Weight evolution', isZh),
     [isZh, result]
   );
 
@@ -447,7 +495,8 @@ const CollaborativeFairness: React.FC = () => {
               }))
             : [],
         [],
-        isZh ? '激励均值' : 'Average incentives'
+        isZh ? '激励均值' : 'Average incentives',
+        isZh
       ),
     [isZh, result]
   );
@@ -457,7 +506,8 @@ const CollaborativeFairness: React.FC = () => {
       buildSafeData(
         () => (selectedClient ? selectedClient.rho.map((value, index) => ({ t: index, rho: value })) : []),
         [],
-        isZh ? '激励序列' : 'Incentive series'
+        isZh ? '激励序列' : 'Incentive series',
+        isZh
       ),
     [isZh, selectedClient]
   );
@@ -467,7 +517,8 @@ const CollaborativeFairness: React.FC = () => {
       buildSafeData(
         () => (result?.fairness.points ? result.fairness.points : []),
         [],
-        isZh ? '公平性散点' : 'Fairness scatter'
+        isZh ? '公平性散点' : 'Fairness scatter',
+        isZh
       ),
     [isZh, result]
   );
@@ -493,54 +544,8 @@ const CollaborativeFairness: React.FC = () => {
     return isZh ? '一致性偏弱：激励与性能匹配度不足，需要复核分配策略。' : 'Weak alignment: incentives do not sufficiently match performance and the allocation strategy should be reviewed.';
   }, [isZh, pearsonValue]);
 
-  const translateD3emWarning = (warning: string) => {
-    if (!isZh) return warning;
-
-    let match = warning.match(/^(.*) needs at least one series \(vind\/scos\/contrib\)\.$/);
-    if (match) return `${match[1]} 至少需要一条序列（vind/scos/contrib）。`;
-
-    match = warning.match(/^(.*): series length mismatch; trimmed to (\d+)\.$/);
-    if (match) return `${match[1]}：序列长度不一致，已截断为 ${match[2]}。`;
-
-    match = warning.match(/^(.*): V_ind\/S_cos missing; synthesized via synthetic_decompose\.$/);
-    if (match) return `${match[1]}：缺少 V_ind/S_cos，已通过 synthetic_decompose 合成。`;
-
-    match = warning.match(/^(.*): V_ind\/S_cos missing; using contrib as proxy \((.*)\)\.$/);
-    if (match) return `${match[1]}：缺少 V_ind/S_cos，已使用 contribution 序列作为代理（${match[2]}）。`;
-
-    match = warning.match(/^(.*): V_ind missing; derived from contrib \+ S_cos\.$/);
-    if (match) return `${match[1]}：缺少 V_ind，已由 contribution 与 S_cos 反推。`;
-
-    match = warning.match(/^(.*): V_ind missing; synthesized via synthetic_decompose\.$/);
-    if (match) return `${match[1]}：缺少 V_ind，已通过 synthetic_decompose 合成。`;
-
-    match = warning.match(/^(.*): V_ind missing; using contrib\/S_cos as proxy\.$/);
-    if (match) return `${match[1]}：缺少 V_ind，已使用 contribution/S_cos 作为代理。`;
-
-    match = warning.match(/^(.*): S_cos missing; derived from contrib \+ V_ind\.$/);
-    if (match) return `${match[1]}：缺少 S_cos，已由 contribution 与 V_ind 反推。`;
-
-    match = warning.match(/^(.*): S_cos missing; synthesized via synthetic_decompose\.$/);
-    if (match) return `${match[1]}：缺少 S_cos，已通过 synthetic_decompose 合成。`;
-
-    match = warning.match(/^(.*): S_cos missing; using contrib\/V_ind as proxy\.$/);
-    if (match) return `${match[1]}：缺少 S_cos，已使用 contribution/V_ind 作为代理。`;
-
-    match = warning.match(/^T=(\d+) exceeds available series length; trimmed to (\d+)\.$/);
-    if (match) return `T=${match[1]} 超过可用序列长度，已截断为 ${match[2]}。`;
-
-    match = warning.match(/^Normalization skipped at t=(\d+) due to near-zero sum\.$/);
-    if (match) return `在 t=${match[1]} 时，由于总和接近 0，已跳过归一化。`;
-
-    if (warning === 'Need at least two valid X/Y pairs to compute Pearson r.') {
-      return '至少需要两组有效的 X/Y 才能计算 Pearson r。';
-    }
-
-    return warning;
-  };
-
   const translatedWarnings = useMemo(
-    () => (result?.warnings || []).map((warning) => translateD3emWarning(warning)),
+    () => (result?.warnings || []).map((warning) => translateD3emWarning(warning, isZh)),
     [isZh, result]
   );
 

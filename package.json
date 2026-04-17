@@ -30,7 +30,15 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "react-scripts start",
+    "dev:backend:fairness": "python3 -u fed4fed/server.py",
+    "dev:backend:d3em": "python3 -u d3em/backend/server.py",
+    "dev:check": "node scripts/check.js",
+    "dev:stop": "node scripts/stop.js",
+    "test:backend": "python3 -m unittest fed4fed/test_server.py",
+    "test:d3em": "python3 d3em/backend/selftest.py"
   },
   "eslintConfig": {
     "extends": [

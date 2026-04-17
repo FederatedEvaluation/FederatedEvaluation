@@ -2,3 +2,10 @@ node_modules
 build
 .DS_Store
 npm-debug.log*
+logs
+__pycache__
+*.pyc
+*.pyo
+*.log
+.pytest_cache
+.coverage
